@@ -36,7 +36,7 @@ class DataAggregator:
             if chart_data and not chart_data.get("error"):
                 stock_data["yahoo_finance"]["chart"] = chart_data
             else:
-                err_msg = f"Failed to fetch chart data for {ticker}: {chart_data.get("error", "Unknown error") if chart_data else "No response"}"
+                err_msg = f"Failed to fetch chart data for {ticker}: {chart_data.get('error', 'Unknown error') if chart_data else 'No response'}"
                 current_app.logger.warning(err_msg)
                 stock_data["errors"].append(err_msg)
 
@@ -44,7 +44,7 @@ class DataAggregator:
             if insights_data and not insights_data.get("error"):
                 stock_data["yahoo_finance"]["insights"] = insights_data
             else:
-                err_msg = f"Failed to fetch insights data for {ticker}: {insights_data.get("error", "Unknown error") if insights_data else "No response"}"
+                err_msg = err_msg = f"Failed to fetch insights data for {ticker}: {insights_data.get('error', 'Unknown error') if insights_data else 'No response'}"
                 current_app.logger.warning(err_msg)
                 stock_data["errors"].append(err_msg)
             
@@ -52,7 +52,7 @@ class DataAggregator:
             if analyst_opinions and not analyst_opinions.get("error"):
                 stock_data["yahoo_finance"]["analyst_opinions"] = analyst_opinions
             else:
-                err_msg = f"Failed to fetch analyst opinions for {ticker}: {analyst_opinions.get("error", "Unknown error") if analyst_opinions else "No response"}"
+                err_msg = f"Failed to fetch analyst opinions for {ticker}: {analyst_opinions.get('error', 'Unknown error') if analyst_opinions else 'No response'}"
                 current_app.logger.warning(err_msg)
                 stock_data["errors"].append(err_msg)
 
@@ -69,7 +69,7 @@ class DataAggregator:
             if gdp_data and not gdp_data.get("error"):
                 stock_data["data_bank"]["gdp_us"] = gdp_data # Store under a descriptive key
             else:
-                err_msg = f"Failed to fetch GDP data for {country_code}: {gdp_data.get("error", "Unknown error") if gdp_data else "No response"}"
+                err_msg = f"Failed to fetch GDP data for {country_code}: {gdp_data.get('error', 'Unknown error') if gdp_data else 'No response'}"
                 current_app.logger.warning(err_msg)
                 stock_data["errors"].append(err_msg)
             
@@ -80,7 +80,7 @@ class DataAggregator:
             if inflation_data and not inflation_data.get("error"):
                 stock_data["data_bank"]["inflation_us_cpi"] = inflation_data
             else:
-                err_msg = f"Failed to fetch Inflation CPI data for {country_code}: {inflation_data.get("error", "Unknown error") if inflation_data else "No response"}"
+                err_msg = f"Failed to fetch Inflation CPI data for {country_code}: {inflation_data.get('error', 'Unknown error') if inflation_data else 'No response'}"
                 current_app.logger.warning(err_msg)
                 stock_data["errors"].append(err_msg)
 

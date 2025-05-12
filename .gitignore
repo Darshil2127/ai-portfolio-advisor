@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+ENV/
+*/venv/
+*/ENV/
+.env
+.venv
+
+# Instance folder (Flask)
+instance/
+
+# Database files (SQLite)
+*.db
+*.sqlite3
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Secrets (if any, though we aim to use environment variables)
+secrets.ini
+*.pem
+*.key
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+

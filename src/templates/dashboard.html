@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Portfolio Advisor - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for("static", filename="css/style.css") }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Portfolio Dashboard</h1>
+
+        <p><a href="{{ url_for("view_bp.index_page") }}">Upload another portfolio</a></p>
+
+        {% if errors %}
+            <h2>Upload Errors:</h2>
+            <ul class="errors">
+                {% for error in errors %}
+                    <li>Row {{ error.row if error.row != "N/A" else "System" }}: {{ error.error }} {% if error.field %}(Field: {{error.field}}){% endif %}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% if processed_rows > 0 %}
+            <p>{{ processed_rows }} row(s) from your CSV were processed.</p>
+        {% endif %}
+
+        {% if holdings %}
+            <h2>Uploaded Portfolio Holdings:</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Quantity</th>
+                        <th>Purchase Price</th>
+                        <th>Purchase Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for holding in holdings %}
+                        <tr>
+                            <td>{{ holding.ticker_symbol }}</td>
+                            <td>{{ holding.quantity }}</td>
+                            <td>{{ "%.2f"|format(holding.purchase_price) if holding.purchase_price is not none else "N/A" }}</td>
+                            <td>{{ holding.purchase_date.strftime("%Y-%m-%d") if holding.purchase_date else "N/A" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif not errors and not processed_rows and not has_results %}
+            <p>No portfolio data has been uploaded yet, or the previous upload was empty.</p>
+        {% elif not holdings and processed_rows > 0 and not errors %}
+            <p>Portfolio data was processed, but no valid holdings were found to display. Please check your CSV.</p>
+        {% elif not holdings and not errors and processed_rows == 0 and has_results %}
+             <p>No valid holdings to display. Please check your CSV or upload errors if any.</p>
+        {% endif %}
+
+        <hr>
+        <h2>AI Recommendations</h2>
+        {% if recommendations %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Recommendation</th>
+                        <th>Confidence</th>
+                        <th>Timeframe</th>
+                        <th>Justification</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in recommendations %}
+                        <tr>
+                            <td>{{ rec.ticker }}</td>
+                            <td class="recommendation-{{ rec.recommendation.lower() }}">{{ rec.recommendation }}</td>
+                            <td>{{ "%.0f%%"|format(rec.confidence_score * 100) if rec.confidence_score is not none else "N/A" }}</td>
+                            <td>{{ rec.timeframe }}</td>
+                            <td>{{ rec.justification }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif holdings and not errors %}
+            <p>Generating recommendations... If this message persists, there might have been an issue during analysis.</p>
+        {% elif not holdings and not errors and has_results %}
+            <p>No holdings available to generate recommendations.</p>
+        {% elif not has_results and not errors and not processed_rows %}
+             <p>Upload a CSV file to see your portfolio analysis here.</p>
+        {% endif %}
+
+    </div>
+    <style>
+        .recommendation-buy { background-color: #d4edda; color: #155724; }
+        .recommendation-sell { background-color: #f8d7da; color: #721c24; }
+        .recommendation-hold { background-color: #fff3cd; color: #856404; }
+        .recommendation-error { background-color: #f8d7da; color: #721c24; font-weight: bold; }
+    </style>
+</body>
+</html>
+

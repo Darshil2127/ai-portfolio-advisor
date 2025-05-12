@@ -1,90 +1,61 @@
 # src/ai_engine/sentiment_analyzer.py
 
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from flask import current_app
+# Ensure vaderSentiment is installed and in requirements.txt
+# pip install vaderSentiment
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 class SentimentAnalyzer:
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
+        current_app.logger.info("SentimentAnalyzer initialized with VADER.")
 
-    def get_sentiment_score(self, text):
+    def analyze_sentiment(self, texts):
         """
-        Calculates the compound sentiment score for a given text.
-        Score ranges from -1 (most negative) to +1 (most positive).
+        Analyzes the sentiment of a given text or list of texts (e.g., news headlines, analyst opinions).
+        Returns an aggregated sentiment score (e.g., average compound score).
+        For stubbed data, this might receive an empty list or list of stubbed opinions.
         """
-        if not text or not isinstance(text, str):
-            return 0.0 # Neutral for empty or invalid input
+        if not texts:
+            current_app.logger.info("No texts provided for sentiment analysis.")
+            return 0.0  # Neutral sentiment if no text
+
+        if isinstance(texts, str):
+            texts = [texts] # Convert single string to list
         
+        compound_scores = []
         try:
-            vs = self.analyzer.polarity_scores(text)
-            # The compound score is a normalized, weighted composite score.
-            return vs["compound"]
+            for text_item in texts: # texts could be a list of strings or a list of dicts
+                actual_text = ""
+                if isinstance(text_item, dict):
+                    # Try to extract text from common keys if it's a list of opinion dicts
+                    actual_text = text_item.get("abstract", text_item.get("headline", text_item.get("title", "")))
+                elif isinstance(text_item, str):
+                    actual_text = text_item
+                
+                if actual_text and isinstance(actual_text, str):
+                    vs = self.analyzer.polarity_scores(actual_text)
+                    compound_scores.append(vs["compound"])
+                else:
+                    current_app.logger.debug(f"Skipping non-string or empty item in sentiment analysis: {text_item}")
+
         except Exception as e:
-            current_app.logger.error(f"Error during sentiment analysis for text 
-{text[:100]}...
-: {e}")
-            return 0.0 # Return neutral on error
+            # Ensure text_excerpt is well-defined for logging
+            text_excerpt = "Error processing texts list" 
+            if texts and isinstance(texts, list) and len(texts) > 0:
+                 first_item_str = str(texts[0])
+                 text_excerpt = first_item_str[:100] + ("..." if len(first_item_str) > 100 else "")
+            elif isinstance(texts, str):
+                 text_excerpt = texts[:100] + ("..." if len(texts) > 100 else "")
+            
+            current_app.logger.error(f"Error during sentiment analysis for input starting with: 	'{text_excerpt}	' - Error: {e}")
+            return 0.0 # Neutral sentiment on error
 
-    def analyze_stock_news_sentiment(self, aggregated_stock_data):
-        """
-        Analyzes sentiment for news related to a single stock from aggregated data.
-        :param aggregated_stock_data: A dictionary from DataAggregator for one stock.
-        :return: A dictionary with average sentiment scores for different news types.
-        """
-        sentiments = {
-            "overall_avg_sentiment": 0.0,
-            "significant_developments_avg_sentiment": 0.0,
-            "analyst_abstracts_avg_sentiment": 0.0,
-            "errors": []
-        }
-        all_scores = []
+        if not compound_scores:
+            current_app.logger.info("No valid text found for sentiment scoring after processing.")
+            return 0.0
         
-        current_app.logger.info(f"Starting sentiment analysis for {aggregated_stock_data.get("ticker")}")
-
-        # 1. Sentiment from Significant Developments (YahooFinance Insights sigDevs)
-        sig_devs_scores = []
-        sig_devs = aggregated_stock_data.get("yahoo_finance", {}).get("insights", {}).get("sigDevs", [])
-        if sig_devs:
-            for dev in sig_devs:
-                headline = dev.get("headline")
-                if headline:
-                    score = self.get_sentiment_score(headline)
-                    sig_devs_scores.append(score)
-                    all_scores.append(score)
-            if sig_devs_scores:
-                sentiments["significant_developments_avg_sentiment"] = sum(sig_devs_scores) / len(sig_devs_scores)
-        else:
-            current_app.logger.info(f"No significant developments found for sentiment analysis for {aggregated_stock_data.get("ticker")}")
-
-        # 2. Sentiment from Analyst Opinion Abstracts (YahooFinance get_stock_what_analyst_are_saying)
-        analyst_abstract_scores = []
-        analyst_reports_data = aggregated_stock_data.get("yahoo_finance", {}).get("analyst_opinions", [])
-        # The response is a list, usually with one item containing "hits"
-        if analyst_reports_data and isinstance(analyst_reports_data, list) and len(analyst_reports_data) > 0:
-            hits = analyst_reports_data[0].get("hits", [])
-            if hits:
-                for report in hits:
-                    abstract = report.get("abstract")
-                    if abstract:
-                        score = self.get_sentiment_score(abstract)
-                        analyst_abstract_scores.append(score)
-                        all_scores.append(score)
-                if analyst_abstract_scores:
-                    sentiments["analyst_abstracts_avg_sentiment"] = sum(analyst_abstract_scores) / len(analyst_abstract_scores)
-            else:
-                current_app.logger.info(f"No analyst report hits found for sentiment analysis for {aggregated_stock_data.get("ticker")}")
-        else:
-            current_app.logger.info(f"No analyst reports data found for sentiment analysis for {aggregated_stock_data.get("ticker")}")
-
-        if all_scores:
-            sentiments["overall_avg_sentiment"] = sum(all_scores) / len(all_scores)
-        
-        current_app.logger.info(f"Finished sentiment analysis for {aggregated_stock_data.get("ticker")}. Overall: {sentiments["overall_avg_sentiment"]}")
-        return sentiments
-
-# Example usage (for testing - requires Flask app context for logger)
-# if __name__ == "__main__":
-#     # Mock aggregated_stock_data
-#     # Needs to be run within a Flask app context
-#     pass
+        average_compound = sum(compound_scores) / len(compound_scores)
+        current_app.logger.info(f"Aggregated sentiment score: {average_compound:.4f} from {len(compound_scores)} texts.")
+        return average_compound
 

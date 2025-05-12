@@ -1,82 +1,60 @@
 # src/data_services/yahoo_finance_client.py
+# STUBBED VERSION FOR DEPLOYMENT WITHOUT data_api
 
-import sys
 from flask import current_app
-
-# Ensure the data_api module can be found
-sys.path.append("/opt/.manus/.sandbox-runtime")
-from data_api import ApiClient
 
 class YahooFinanceClient:
     def __init__(self):
-        self.client = ApiClient()
+        # self.client = ApiClient() # Removed data_api dependency
+        current_app.logger.info("[STUBBED] YahooFinanceClient initialized (no actual API client)")
 
     def get_stock_chart_data(self, symbol, interval="1d", range="1y", region="US", include_adjusted_close=True):
-        """Fetches historical stock chart data."""
-        try:
-            params = {
-                "symbol": symbol,
-                "interval": interval,
-                "range": range,
-                "region": region,
-                "includeAdjustedClose": include_adjusted_close
+        """Fetches historical stock chart data - STUBBED."""
+        current_app.logger.info(f"[STUBBED] get_stock_chart_data for {symbol}")
+        # Return minimal valid-looking dummy data
+        return {
+            "meta": {"symbol": symbol, "currency": "USD", "exchangeName": "NMS", "instrumentType": "EQUITY", "firstTradeDate": 1588000000, "regularMarketTime": 1688000000, "gmtoffset": -14400, "timezone": "EDT", "exchangeTimezoneName": "America/New_York", "regularMarketPrice": 150.0, "chartPreviousClose": 149.0, "priceHint": 2, "currentTradingPeriod": {"pre": {}, "regular": {}, "post": {}}, "dataGranularity": "1d", "range": "1y", "validRanges": ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"]},
+            "timestamp": [1687000000, 1687100000], 
+            "indicators": {
+                "quote": [{
+                    "open": [149.5, 150.1],
+                    "close": [150.0, 150.5],
+                    "high": [150.5, 150.8],
+                    "low": [149.0, 150.0],
+                    "volume": [1000000, 1200000]
+                }], 
+                "adjclose": [{ 
+                    "adjclose": [150.0, 150.5]
+                }]
             }
-            current_app.logger.info(f"Fetching stock chart data for {symbol} with params: {params}")
-            response = self.client.call_api("YahooFinance/get_stock_chart", query=params)
-            # Basic validation of response structure
-            if response and response.get("chart") and response["chart"].get("result") and response["chart"]["result"][0]:
-                current_app.logger.info(f"Successfully fetched stock chart data for {symbol}")
-                return response["chart"]["result"][0]
-            else:
-                current_app.logger.error(f"Unexpected response structure for get_stock_chart {symbol}: {response}")
-                return {"error": "Invalid data structure from API for get_stock_chart", "details": response}
-        except Exception as e:
-            current_app.logger.error(f"Error fetching stock chart data for {symbol}: {e}")
-            return {"error": str(e)}
+        }
 
-    def get_stock_insights_data(self, symbol, region="US"): # region is not in API spec for insights, but good to keep consistent if other YF APIs use it
-        """Fetches stock insights data."""
-        try:
-            params = {
-                "symbol": symbol
-                # "region": region # Not a parameter for get_stock_insights based on provided API docs
-            }
-            current_app.logger.info(f"Fetching stock insights for {symbol} with params: {params}")
-            response = self.client.call_api("YahooFinance/get_stock_insights", query=params)
-            if response and response.get("finance") and response["finance"].get("result"):
-                current_app.logger.info(f"Successfully fetched stock insights for {symbol}")
-                return response["finance"]["result"]
-            else:
-                current_app.logger.error(f"Unexpected response structure for get_stock_insights {symbol}: {response}")
-                return {"error": "Invalid data structure from API for get_stock_insights", "details": response}
-        except Exception as e:
-            current_app.logger.error(f"Error fetching stock insights for {symbol}: {e}")
-            return {"error": str(e)}
+    def get_stock_insights_data(self, symbol, region="US"): 
+        """Fetches stock insights data - STUBBED."""
+        current_app.logger.info(f"[STUBBED] get_stock_insights_data for {symbol}")
+        return {
+            "symbol": symbol,
+            "instrumentInfo": {
+                "technicalEvents": {"provider": "StubProvider", "shortTermOutlook": {"stateDescription": "Neutral"}, "intermediateTermOutlook": {"stateDescription": "Neutral"}, "longTermOutlook": {"stateDescription": "Neutral"}},
+                "keyTechnicals": {"provider": "StubProvider", "support": 140.0, "resistance": 160.0, "stopLoss": 135.0},
+                "valuation": {"description": "Fairly Valued", "provider": "StubProvider"}
+            },
+            "companySnapshot": {"company": {"innovativeness": 0.5}, "sector": {"innovativeness": 0.5}},
+            "recommendation": {"targetPrice": 155.0, "provider": "StubProvider", "rating": "Hold"},
+            "sigDevs": [
+                {"headline": "[STUBBED] Company announces new product", "date": "2023-10-26"}
+            ],
+            "secReports": []
+        }
 
     def get_analyst_opinions(self, symbol, region="US", lang="en-US"):
-        """Fetches what analysts are saying about a stock."""
-        try:
-            params = {
-                "symbol": symbol,
-                "region": region,
-                "lang": lang
+        """Fetches what analysts are saying about a stock - STUBBED."""
+        current_app.logger.info(f"[STUBBED] get_analyst_opinions for {symbol}")
+        return [
+            {
+                "hits": [
+                    {"report_title": "[STUBBED] Analyst Report on XYZ", "provider": "StubBank", "abstract": "[STUBBED] Neutral outlook for XYZ stock."}
+                ]
             }
-            current_app.logger.info(f"Fetching analyst opinions for {symbol} with params: {params}")
-            response = self.client.call_api("YahooFinance/get_stock_what_analyst_are_saying", query=params)
-            if response and response.get("result"):
-                current_app.logger.info(f"Successfully fetched analyst opinions for {symbol}")
-                return response["result"]
-            else:
-                current_app.logger.error(f"Unexpected response structure for get_stock_what_analyst_are_saying {symbol}: {response}")
-                return {"error": "Invalid data structure from API for get_stock_what_analyst_are_saying", "details": response}
-        except Exception as e:
-            current_app.logger.error(f"Error fetching analyst opinions for {symbol}: {e}")
-            return {"error": str(e)}
-
-# Example usage (for testing purposes, not part of the Flask app directly here):
-# if __name__ == "__main__":
-#     # This part needs a Flask app context to run current_app.logger
-#     # For standalone testing, you might replace current_app.logger with print()
-#     # and instantiate ApiClient directly without Flask context.
-#     pass
+        ]
 

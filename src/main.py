@@ -18,7 +18,7 @@ db = SQLAlchemy(app) # Initialize SQLAlchemy with the app instance
 # Import and register blueprints after db is initialized and models are defined
 from src.routes.upload_routes import upload_bp
 from src.routes.view_routes import view_bp
-app.register_blueprint(upload_bp, url_prefix=\"/api") # Corrected quoting for url_prefix
+app.register_blueprint(upload_bp, url_prefix="/api") # Corrected quoting for url_prefix
 app.register_blueprint(view_bp) # Register view_bp, typically without a prefix for root views like '/' and '/dashboard'
 
 # Import models here to ensure they are registered with SQLAlchemy before db.create_all()

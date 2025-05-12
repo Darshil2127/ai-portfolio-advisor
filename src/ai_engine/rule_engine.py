@@ -4,107 +4,119 @@ from flask import current_app
 
 class RuleEngine:
     def __init__(self):
-        # In a more advanced system, rules could be loaded from a config file or database
-        pass
+        current_app.logger.info("RuleEngine initialized.")
+        # Define thresholds or more complex rule configurations here if needed
+        self.thresholds = {
+            "rsi_oversold": 30,
+            "rsi_overbought": 70,
+            "sentiment_positive_strong": 0.5,
+            "sentiment_negative_strong": -0.5,
+            "pe_ratio_low_threshold": 15, # Example: Lower P/E might indicate undervaluation
+            "pe_ratio_high_threshold": 25, # Example: Higher P/E might indicate overvaluation
+            "moving_avg_short_vs_long_buy_signal_margin": 1.02, # e.g. short term MA is 2% above long term MA
+            "moving_avg_short_vs_long_sell_signal_margin": 0.98 # e.g. short term MA is 2% below long term MA
+        }
 
-    def generate_recommendation(self, stock_features, stock_sentiments):
+    def generate_advice(self, ticker, engineered_features, sentiment_score, market_data):
         """
-        Generates a recommendation based on a set of rules applied to stock features and sentiments.
-        :param stock_features: Dictionary of engineered features for a stock.
-        :param stock_sentiments: Dictionary of sentiment scores for the stock.
-        :return: A dictionary containing the recommendation, confidence, timeframe, and justification.
+        Applies a set of rules to the engineered features and sentiment score 
+        to generate buy/sell/hold advice for a given stock.
+        `market_data` is the aggregated data which might include price, P/E, etc.
+        `engineered_features` might include RSI, moving averages, etc.
         """
-        ticker = stock_features.get("ticker", "Unknown")
-        current_app.logger.info(f"Starting rule-based recommendation for {ticker}")
+        advice = "Hold"
+        reason = "Default recommendation; no strong signals detected."
+        confidence_score = 0.5 # Neutral confidence
 
-        recommendation = "HOLD"  # Default recommendation
-        confidence = 0.5  # Default confidence (neutral)
-        timeframe = "Medium-Term" # Default timeframe
-        justification_points = []
+        # --- Basic Price & Volume checks (from market_data if available) ---
+        # Example: Check for unusual volume spikes if volume data is present
+        # current_price = market_data.get("chart", {}).get("meta", {}).get("regularMarketPrice")
+        # current_volume = market_data.get("chart", {}).get("meta", {}).get("regularMarketVolume")
+        # historical_avg_volume = engineered_features.get("average_volume_30d") # Assuming this feature exists
+        # if current_volume and historical_avg_volume and current_volume > historical_avg_volume * 2:
+        #     reason += " Significant volume spike detected."
+        #     confidence_score = min(1.0, confidence_score + 0.1)
 
-        # --- Rule Evaluation --- 
-        # These rules are examples and should be expanded and refined based on financial expertise and testing.
+        # --- Sentiment-based rules ---
+        if sentiment_score > self.thresholds["sentiment_positive_strong"]:
+            advice = "Consider Buy"
+            reason = "Strong positive sentiment detected from news and analyst opinions."
+            confidence_score = 0.7
+        elif sentiment_score < self.thresholds["sentiment_negative_strong"]:
+            advice = "Consider Sell"
+            reason = "Strong negative sentiment detected from news and analyst opinions."
+            confidence_score = 0.7
 
-        # Rule 1: Strong Buy Signal (RSI Oversold + Positive Sentiment + Good Fundamentals)
-        try:
-            rsi = stock_features.get("rsi_14_day")
-            overall_sentiment = stock_sentiments.get("overall_avg_sentiment", 0.0)
-            # Assuming analyst ratings are converted to a numerical score or simple category
-            # For simplicity, let's use valuation description for now
-            valuation = stock_features.get("valuation_description", "").lower()
-            sma_20 = stock_features.get("sma_20_day")
-            sma_50 = stock_features.get("sma_50_day")
-            current_price = stock_features.get("current_price")
+        # --- Technical Indicator-based rules (from engineered_features) ---
+        rsi = engineered_features.get("rsi_14d")
+        if rsi is not None:
+            if rsi < self.thresholds["rsi_oversold"]:
+                if advice == "Consider Sell": # Conflicting signals
+                    advice = "Hold"
+                    reason = f"Conflicting signals: RSI ({rsi:.2f}) indicates oversold, but sentiment is negative. Recommending Hold."
+                    confidence_score = 0.4
+                else:
+                    advice = "Buy"
+                    reason = f"RSI ({rsi:.2f}) indicates the stock may be oversold."
+                    confidence_score = max(confidence_score, 0.75)
+            elif rsi > self.thresholds["rsi_overbought"]:
+                if advice == "Consider Buy": # Conflicting signals
+                    advice = "Hold"
+                    reason = f"Conflicting signals: RSI ({rsi:.2f}) indicates overbought, but sentiment is positive. Recommending Hold."
+                    confidence_score = 0.4
+                else:
+                    advice = "Sell"
+                    reason = f"RSI ({rsi:.2f}) indicates the stock may be overbought."
+                    confidence_score = max(confidence_score, 0.75)
+        
+        # --- Moving Average Crossover (from engineered_features) ---
+        # sma_short = engineered_features.get("sma_20d")
+        # sma_long = engineered_features.get("sma_50d")
+        # if sma_short and sma_long:
+        #     if sma_short > sma_long * self.thresholds["moving_avg_short_vs_long_buy_signal_margin"]:
+        #         # Golden Cross (simplified)
+        #         if advice == "Sell" or advice == "Consider Sell":
+        #             advice = "Hold"
+        #             reason = f"Conflicting signals: SMA crossover suggests bullish, but other indicators bearish. Hold."
+        #             confidence_score = 0.4
+        #         else:
+        #             advice = "Buy"
+        #             reason += " Short-term moving average crossed above long-term, potential bullish signal."
+        #             confidence_score = min(1.0, confidence_score + 0.15)
+        #     elif sma_short < sma_long * self.thresholds["moving_avg_short_vs_long_sell_signal_margin"]:
+        #         # Death Cross (simplified)
+        #         if advice == "Buy" or advice == "Consider Buy":
+        #             advice = "Hold"
+        #             reason = f"Conflicting signals: SMA crossover suggests bearish, but other indicators bullish. Hold."
+        #             confidence_score = 0.4
+        #         else:
+        #             advice = "Sell"
+        #             reason += " Short-term moving average crossed below long-term, potential bearish signal."
+        #             confidence_score = min(1.0, confidence_score + 0.15)
 
-            # Basic BUY rules
-            if rsi is not None and rsi < 35 and overall_sentiment > 0.1:
-                if valuation in ["undervalued", "significantly undervalued"]:
-                    recommendation = "BUY"
-                    confidence = 0.75
-                    justification_points.append("RSI indicates oversold conditions (<35).")
-                    justification_points.append(f"Positive overall news sentiment ({overall_sentiment:.2f}).")
-                    justification_points.append(f"Valuation appears attractive ({valuation}).")
-                    timeframe = "Medium-Term"
-            
-            elif current_price and sma_20 and sma_50 and current_price > sma_20 and sma_20 > sma_50 and overall_sentiment > 0.05:
-                recommendation = "BUY"
-                confidence = 0.70
-                justification_points.append("Positive short-term price trend (Price > SMA20 > SMA50).")
-                justification_points.append(f"Slightly positive news sentiment ({overall_sentiment:.2f}).")
-                timeframe = "Short-Term"
-
-            # Basic SELL rules
-            if rsi is not None and rsi > 65 and overall_sentiment < -0.1:
-                if valuation in ["overvalued", "significantly overvalued"]:
-                    recommendation = "SELL"
-                    confidence = 0.75
-                    justification_points.append("RSI indicates overbought conditions (>65).")
-                    justification_points.append(f"Negative overall news sentiment ({overall_sentiment:.2f}).")
-                    justification_points.append(f"Valuation appears stretched ({valuation}).")
-                    timeframe = "Medium-Term"
-
-            elif current_price and sma_20 and sma_50 and current_price < sma_20 and sma_20 < sma_50 and overall_sentiment < -0.05:
-                recommendation = "SELL"
-                confidence = 0.70
-                justification_points.append("Negative short-term price trend (Price < SMA20 < SMA50).")
-                justification_points.append(f"Slightly negative news sentiment ({overall_sentiment:.2f}).")
-                timeframe = "Short-Term"
-
-            # Hold conditions (if no strong buy/sell, or conflicting signals)
-            if not justification_points: # If no strong signals fired
-                justification_points.append("Market conditions and indicators appear neutral or mixed for this stock currently.")
-                confidence = 0.5 # Reset confidence for HOLD if it wasn't changed by a rule
-                if recommendation != "HOLD": # If a weak rule changed it, but no justification points, revert to HOLD
-                    recommendation = "HOLD"
-
-        except Exception as e:
-            current_app.logger.error(f"Error during rule evaluation for {ticker}: {e}")
-            justification_points.append(f"Error in rule engine: {str(e)}")
-            recommendation = "HOLD" # Default to HOLD on error
-            confidence = 0.3 # Lower confidence due to error
-
-        final_justification = " ".join(justification_points)
-        if not final_justification:
-            final_justification = "No specific strong signals identified; current recommendation is based on a neutral outlook."
+        # --- Fundamental data based rules (example, if P/E ratio is available in market_data -> insights) ---
+        # pe_ratio = market_data.get("insights", {}).get("valuation", {}).get("peRatio") # Path might vary
+        # if pe_ratio:
+        #     if pe_ratio < self.thresholds["pe_ratio_low_threshold"] and sentiment_score > 0:
+        #         reason += f" Potentially undervalued with P/E of {pe_ratio:.2f} and positive sentiment."
+        #         if advice == "Hold" or advice == "Consider Buy": advice = "Buy"
+        #         confidence_score = min(1.0, confidence_score + 0.1)
+        #     elif pe_ratio > self.thresholds["pe_ratio_high_threshold"] and sentiment_score < 0:
+        #         reason += f" Potentially overvalued with P/E of {pe_ratio:.2f} and negative sentiment."
+        #         if advice == "Hold" or advice == "Consider Sell": advice = "Sell"
+        #         confidence_score = min(1.0, confidence_score + 0.1)
 
         result = {
-            "ticker": ticker,
-            "recommendation": recommendation,
-            "confidence_score": round(confidence, 2),
-            "timeframe": timeframe,
-            "justification": final_justification,
-            "raw_features_considered": { # For debugging or advanced display
-                "rsi_14_day": stock_features.get("rsi_14_day"),
-                "overall_sentiment": stock_sentiments.get("overall_avg_sentiment", 0.0),
-                "valuation_description": stock_features.get("valuation_description")
+            "symbol": ticker,
+            "recommendation": advice,
+            "reason": reason.strip(),
+            "confidence_score": round(confidence_score, 2),
+            "details": {
+                "rsi_14d": f"{rsi:.2f}" if rsi is not None else "N/A",
+                "sentiment_score": f"{sentiment_score:.4f}",
+                # Add other relevant features/data points used in decision making
             }
         }
-        current_app.logger.info(f"Generated recommendation for {ticker}: {result["recommendation"]} with confidence {result["confidence_score"]}")
+        current_app.logger.info(f"Generated recommendation for {ticker}: {result['recommendation']} with confidence {result['confidence_score']}")
         return result
-
-# Example usage (for testing - requires Flask app context for logger)
-# if __name__ == "__main__":
-#     # Mock stock_features and stock_sentiments
-#     # Needs to be run within a Flask app context
-#     pass
 
